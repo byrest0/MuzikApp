@@ -16,6 +16,19 @@ class MusicApp:
         self.load_settings() 
         self.setup_page()
         self.init_variables()
+        
+        # SES MOTORUNU EN BAŞTA BAŞLAT (KIRMIZI EKRAN ÇÖZÜMÜ)
+        self.audio_player = ft.Audio(
+            src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
+            autoplay=False, 
+            volume=1.0,
+            on_position_changed=self.sure_guncelle,
+            on_state_changed=self.audio_state_changed,
+        )
+        # Sayfaya hemen ekle ki "Unknown control" hatası vermesin
+        self.page.overlay.append(self.audio_player)
+        self.page.update()
+
         self.build_ui()
         
         # Ses ayarlarını uygula
@@ -133,7 +146,8 @@ class MusicApp:
         )
 
         self.durum_yazisi = ft.Text("Müzik bekleniyor...", color="white54", size=12)
-        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", text_align="center", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+        # Şarkı ismi için Text kontrolü
+        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align="center")
         self.gecen_sure_txt = ft.Text("00:00", size=12, color="white54")
         self.toplam_sure_txt = ft.Text("00:00", size=12, color="white54")
         
@@ -174,27 +188,15 @@ class MusicApp:
         self.ses_slider = ft.Slider(min=0, max=100, value=100, expand=True, height=20, on_change=self.ses_degisti)
         self.ses_ikonu = ft.IconButton(icon="volume_up", icon_size=20, icon_color="white54", on_click=self.sesi_kapat_ac)
 
-        self.audio_player = ft.Audio(
-            src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
-            autoplay=False, 
-            volume=1.0,
-            on_position_changed=self.sure_guncelle,
-            on_state_changed=self.audio_state_changed,
-        )
-        self.page.overlay.append(self.audio_player)
-
         # --- VIEW TANIMLAMALARI ---
-        
-        # 1. KEŞFET SAYFASI (YENİLENDİ: Header ve Renk Paleti Eklendi)
         self.view_kesfet = ft.Container(
             padding=15,
             expand=True,
             content=ft.Column([
-                # ÜST BAŞLIK ALANI
                 ft.Row(
                     controls=[
-                        ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color), # Sol Üst Başlık
-                        ft.PopupMenuButton( # Sağ Üst Renk Paleti
+                        ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
+                        ft.PopupMenuButton(
                             icon="color_lens",
                             items=[
                                 ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
@@ -208,7 +210,6 @@ class MusicApp:
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN
                 ),
-                
                 ft.Text("Keşfet", size=28, weight="bold", color="white"),
                 ft.Container(
                     content=ft.Row([
@@ -233,7 +234,6 @@ class MusicApp:
             ])
         )
 
-        # KİTAPLIK SAYFASI (Renk paleti buradan kaldırıldı, ana sayfaya alındı)
         self.view_kitaplik = ft.Container(
             padding=15,
             expand=True,
@@ -243,7 +243,21 @@ class MusicApp:
             ])
         )
 
-        # --- PLAYER DÜZENİ ---
+        # --- PLAYER DÜZENİ (LISTTILE İLE DÜZELTİLDİ) ---
+        # ListTile kullanımı sayesinde buton asla kaybolmaz, yazı uzunsa ... olur.
+        self.player_info_tile = ft.ListTile(
+            title=self.suanki_sarki_adi,
+            subtitle=self.durum_yazisi,
+            trailing=ft.IconButton(
+                icon="more_vert", 
+                icon_color="white", 
+                icon_size=30,
+                tooltip="Seçenekler",
+                on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
+            ),
+            content_padding=0 # Kenar boşluklarını sıfırla, ortada dursun
+        )
+
         self.view_player = ft.Container(
             padding=20,
             alignment=ft.alignment.center,
@@ -260,25 +274,10 @@ class MusicApp:
                 self.visualizer_row,
                 ft.Container(height=10),
                 
-                ft.Column([
-                    ft.Row(
-                        controls=[
-                            ft.Container(content=self.suanki_sarki_adi, width=280),
-                            ft.IconButton(
-                                icon="more_vert", 
-                                icon_color="white", 
-                                icon_size=24,
-                                tooltip="Seçenekler",
-                                on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
-                            )
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        spacing=0
-                    ),
-                    self.durum_yazisi
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=0),
+                # ListTile ile düzeltilmiş bilgi alanı
+                ft.Container(content=self.player_info_tile, padding=ft.padding.symmetric(horizontal=10)),
                 
-                ft.Container(height=30),
+                ft.Container(height=20),
                 
                 ft.Row([self.gecen_sure_txt, self.sure_slider, self.toplam_sure_txt], alignment=ft.MainAxisAlignment.CENTER),
                 
@@ -369,7 +368,6 @@ class MusicApp:
         if not sarki: return
         self.secilen_menu_sarkisi = sarki
         
-        # 1. İndirilmiş mi?
         temiz_isim = self.sanitize_filename(sarki['title'])
         indirildi = False
         if os.path.exists(self.indirilenler_klasoru):
@@ -378,7 +376,6 @@ class MusicApp:
                     indirildi = True
                     break
         
-        # 2. Favori mi?
         favori_mi = any(s['id'] == sarki['id'] for s in self.favori_listesi)
 
         items = [
@@ -387,13 +384,11 @@ class MusicApp:
             ft.ListTile(leading=ft.Icon("play_arrow_rounded"), title=ft.Text("Hemen Oynat"), on_click=lambda _: self.menu_islem_oynat(sarki)),
         ]
 
-        # FAVORİ SEÇENEĞİ (YENİ EKLENDİ)
         if favori_mi:
             items.append(ft.ListTile(leading=ft.Icon("favorite", color="red"), title=ft.Text("Favorilerden Çıkar", color="red"), on_click=lambda _: self.menu_islem("favori_degistir")))
         else:
             items.append(ft.ListTile(leading=ft.Icon("favorite_border"), title=ft.Text("Favorilere Ekle"), on_click=lambda _: self.menu_islem("favori_degistir")))
 
-        # İNDİR / SİL SEÇENEĞİ
         if indirildi:
             items.append(ft.ListTile(leading=ft.Icon("delete", color="red"), title=ft.Text("Şarkıyı Sil", color="red"), on_click=lambda _: self.menu_islem("sil")))
         else:
@@ -405,23 +400,18 @@ class MusicApp:
         self.context_menu.open = True
         self.context_menu.update()
 
-    # MENÜDEN FAVORİ İŞLEMİ
     def menu_favori_yap(self, sarki):
         mevcut_idleri = [s['id'] for s in self.favori_listesi]
         if sarki['id'] in mevcut_idleri:
             self.favori_listesi = [s for s in self.favori_listesi if s['id'] != sarki['id']]
             msj = "Favorilerden çıkarıldı."
-            
-            # Eğer şu an çalan şarkıysa, ana ekrandaki butonu da güncelle
-            if self.indir_butonu.data == sarki['id']: # İndir butonu data tutuyor
+            if self.indir_butonu.data == sarki['id']: 
                 self.favori_butonu.icon = "favorite_border"
                 self.favori_butonu.icon_color = "white"
         else:
             kayit_verisi = {'id': sarki['id'], 'title': sarki['title'], 'duration': sarki.get('duration', '00:00'), 'thumbnails': self.get_thumb_url(sarki)}
             self.favori_listesi.append(kayit_verisi)
             msj = "Favorilere eklendi ❤️"
-            
-            # Eğer şu an çalan şarkıysa, ana ekrandaki butonu da güncelle
             if self.indir_butonu.data == sarki['id']:
                 self.favori_butonu.icon = "favorite"
                 self.favori_butonu.icon_color = "red"
@@ -430,7 +420,7 @@ class MusicApp:
         
         self.page.snack_bar = ft.SnackBar(ft.Text(msj))
         self.page.snack_bar.open = True
-        if self.nav_bar.selected_index == 2: self.favorileri_listele() # Kitaplıktaysak yenile
+        if self.nav_bar.selected_index == 2: self.favorileri_listele() 
         self.page.update()
 
     def sarkiyi_sil(self, sarki):
@@ -471,12 +461,8 @@ class MusicApp:
         for bar in self.visualizer_bars: bar.bgcolor = renk
         self.shuffle_btn.icon_color = renk if self.shuffle_mode else "white24"
         self.repeat_btn.icon_color = renk if self.repeat_mode else "white24"
-        
-        # Ana Sayfa Başlık Rengini Değiştir
-        if self.nav_bar.selected_index == 0: # Keşfetteysek
-             # Keşfet view içindeki ilk row'un ilk elemanı (Text)
+        if self.nav_bar.selected_index == 0:
              self.view_kesfet.content.controls[0].controls[0].color = renk 
-
         self.page.update()
         self.page.snack_bar = ft.SnackBar(ft.Text(f"Tema: {renk.capitalize()}"))
         self.page.snack_bar.open = True
@@ -540,7 +526,6 @@ class MusicApp:
         title = secilen_sarki['title']
         thumb = self.get_thumb_url(secilen_sarki)
 
-        # Player sayfasına geç
         self.nav_bar.selected_index = 3
         try: self.page.controls.pop(0)
         except: pass
@@ -551,7 +536,6 @@ class MusicApp:
         self.play_btn.disabled = True
         self.loading_indicator.visible = True 
         
-        # Sayfayı güncelle
         self.page.update()
 
         def background_load():
@@ -609,7 +593,6 @@ class MusicApp:
                     self.video_butonu.disabled = False
                     self.video_butonu.data = video_id
                     
-                    # ŞARKI ÇALMAYA BAŞLAYINCA İNDİRME BUTONUNU KONTROL ET
                     indirildi_mi = False
                     if os.path.exists(self.indirilenler_klasoru):
                         for f in os.listdir(self.indirilenler_klasoru):
@@ -741,7 +724,6 @@ class MusicApp:
 
     def liste_karti_olustur(self, veri, liste_referansi, indirildi_mi=False):
         thumb = self.get_thumb_url(veri)
-        # Kart içeriği
         content_container = ft.Container(
             content=ft.Row([
                 ft.Image(src=thumb, width=60, height=60, border_radius=10, fit=ft.ImageFit.COVER),
