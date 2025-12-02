@@ -14,15 +14,12 @@ class MusicApp:
         self.app_running = True 
         self.mobile_mode = True 
         
-        # 1. AYARLAR VE DEĞİŞKENLER
+        # 1. AYARLARI YÜKLE
         self.load_settings() 
         self.setup_page()
         self.init_variables()
         
-        # 2. ARAYÜZÜ OLUŞTUR
-        self.build_ui()
-        
-        # 3. SES MOTORUNU OLUŞTUR
+        # 2. SES MOTORUNU EN BAŞTA KUR (SES GELMESİ İÇİN KRİTİK)
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -30,21 +27,28 @@ class MusicApp:
             on_position_changed=self.sure_guncelle,
             on_state_changed=self.audio_state_changed,
         )
+        # Sesi overlay'e ekliyoruz (Eski çalışan yöntem)
+        self.page.overlay.append(self.audio_player)
         
-        # 4. HER ŞEYİ SAYFAYA EKLE (Sıralama Önemli!)
-        self.page.overlay.append(self.audio_player) 
-        self.page.overlay.append(self.context_menu) 
+        # SİSTEMİN SESİ TANIMASI İÇİN İLK GÜNCELLEME
+        self.page.update()
+        time.sleep(0.1) 
+
+        # 3. ARAYÜZÜ OLUŞTUR
+        self.build_ui()
         
+        # 4. ARAYÜZÜ SAYFAYA EKLE
         self.page.add(self.view_kesfet) 
         self.page.add(self.nav_bar)     
+        self.page.overlay.append(self.context_menu)
         
-        # 5. AYARLARI KONTROLLERE İŞLE
+        # 5. KONTROLLERİ AYARLA
         self.ses_slider.value = self.audio_player.volume * 100
         
-        # 6. VE FİNAL: TEK SEFERDE GÜNCELLE
+        # 6. ARAYÜZÜ GÖSTER
         self.page.update()
         
-        # 7. Başlangıç İşlemleri
+        # 7. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
@@ -70,8 +74,9 @@ class MusicApp:
         self.page.title = "MyMusics Mobile"
         self.page.theme_mode = "dark"
         self.page.bgcolor = "#000000" 
-        self.page.padding = 0 
+        self.page.padding = 0 # TAM EKRAN İÇİN SIFIRLANDI
         self.page.scroll = None 
+        self.page.horizontal_alignment = "stretch" # YAYILMA AYARI
         
         self.current_theme_color = self.settings["theme"]
         self.page.theme = ft.Theme(
@@ -133,12 +138,12 @@ class MusicApp:
             text_size=16
         )
         
-        self.kesfet_sonuclari = ft.ListView(expand=True, spacing=10, padding=20)
-        self.arama_sonuclari = ft.ListView(expand=True, spacing=10, padding=20)
-        self.favori_sonuclari = ft.ListView(expand=True, spacing=10, padding=20)
+        self.kesfet_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
+        self.arama_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
+        self.favori_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
         
         self.visualizer_bars = []
-        for _ in range(15): 
+        for _ in range(25): 
             self.visualizer_bars.append(
                 ft.Container(
                     width=6, 
@@ -158,13 +163,13 @@ class MusicApp:
         )
 
         self.durum_yazisi = ft.Text("Müzik bekleniyor...", color="white54", size=12)
-        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=20, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align="center")
         self.gecen_sure_txt = ft.Text("00:00", size=12, color="white54")
         self.toplam_sure_txt = ft.Text("00:00", size=12, color="white54")
         
         self.suanki_resim = ft.Image(
             src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg", 
-            width=280, height=280, 
+            width=340, height=340, 
             fit=ft.ImageFit.COVER, 
             border_radius=20,
             animate_scale=ft.Animation(400, "bounceOut")
@@ -177,7 +182,7 @@ class MusicApp:
             shadow=ft.BoxShadow(blur_radius=30, color="black", spread_radius=2), 
             border_radius=20, 
             alignment=ft.alignment.center,
-            padding=10,
+            padding=0, 
             animate=ft.Animation(500, "easeOut") 
         )
 
@@ -201,68 +206,72 @@ class MusicApp:
 
         # --- VIEW TANIMLAMALARI ---
         self.view_kesfet = ft.Container(
-            padding=15,
+            padding=0, # KENAR BOŞLUĞU YOK
             expand=True,
             content=ft.Column([
-                # --- BAŞLIK ALANI (YENİLENDİ: Porsche Tarzı İmza) ---
-                ft.Row(
-                    controls=[
-                        ft.Row([
-                            ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
-                            # PORSCHE TARZI GENİŞ VE MODERN FONT
-                            ft.Text(" BEDIRHANY", size=16, color="white", weight="bold", font_family="PorscheTarzi") 
-                        ], spacing=5, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                        
-                        ft.PopupMenuButton(
-                            icon="color_lens",
-                            items=[
-                                ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
-                                ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
-                                ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
-                                ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
-                                ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
-                                ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
-                            ]
-                        )
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                ),
-                ft.Text("Keşfet", size=28, weight="bold", color="white"),
                 ft.Container(
+                    padding=ft.padding.symmetric(horizontal=15, vertical=10),
+                    content=ft.Row(
+                        controls=[
+                            ft.Row([
+                                ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
+                                ft.Text(" BEDIRHANY", size=16, color="white", weight="bold", font_family="PorscheTarzi") 
+                            ], spacing=5, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            
+                            ft.PopupMenuButton(
+                                icon="color_lens",
+                                items=[
+                                    ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
+                                    ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
+                                    ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
+                                    ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
+                                    ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
+                                    ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
+                                ]
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+                    )
+                ),
+                
+                ft.Container(padding=ft.padding.only(left=15), content=ft.Text("Keşfet", size=28, weight="bold", color="white")),
+                
+                ft.Container(
+                    padding=ft.padding.symmetric(horizontal=5),
                     content=ft.Row([
                         ft.ElevatedButton("Yerli", on_click=lambda _: self.kesfet_kategori_getir("Yerli"), bgcolor="green", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Yabancı", on_click=lambda _: self.kesfet_kategori_getir("Yabancı"), bgcolor="blue", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Mix", on_click=lambda _: self.kesfet_kategori_getir("Rastgele"), bgcolor="purple", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.IconButton(icon="hourglass_bottom", on_click=self.zaman_yolculugu, icon_color="orange"),
                     ], scroll="auto"),
-                    height=50
+                    height=60
                 ),
                 self.kesfet_sonuclari
             ])
         )
 
         self.view_arama = ft.Container(
-            padding=15,
+            padding=0, 
             expand=True,
             content=ft.Column([
-                ft.Text("Arama", size=28, weight="bold", color="white"),
-                self.arama_kutusu,
+                ft.Container(padding=ft.padding.all(15), content=ft.Text("Arama", size=28, weight="bold", color="white")),
+                ft.Container(padding=ft.padding.symmetric(horizontal=15), content=self.arama_kutusu),
                 self.arama_sonuclari
             ])
         )
 
         self.view_kitaplik = ft.Container(
-            padding=15,
+            padding=0, 
             expand=True,
             content=ft.Column([
-                ft.Text("Kitaplık", size=28, weight="bold", color="white"),
+                ft.Container(padding=ft.padding.all(15), content=ft.Text("Kitaplık", size=28, weight="bold", color="white")),
                 self.favori_sonuclari
             ])
         )
 
         # --- PLAYER DÜZENİ ---
         self.view_player = ft.Container(
-            padding=20,
+            padding=0,
             alignment=ft.alignment.center,
             expand=True,
             gradient=ft.LinearGradient(
@@ -271,7 +280,7 @@ class MusicApp:
                 colors=["#1a1a1a", "#000000"]
             ),
             content=ft.Column([
-                ft.Container(height=20),
+                ft.Container(height=30),
                 self.resim_konteyner,
                 ft.Container(height=20),
                 self.visualizer_row,
@@ -282,12 +291,12 @@ class MusicApp:
                         controls=[
                             ft.Container(
                                 content=self.suanki_sarki_adi, 
-                                width=250
+                                width=280
                             ),
                             ft.IconButton(
                                 icon="more_vert", 
                                 icon_color="white", 
-                                icon_size=26,
+                                icon_size=28,
                                 tooltip="Seçenekler",
                                 on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
                             )
@@ -302,7 +311,7 @@ class MusicApp:
                 
                 ft.Row([self.gecen_sure_txt, self.sure_slider, self.toplam_sure_txt], alignment=ft.MainAxisAlignment.CENTER),
                 
-                ft.Row([self.shuffle_btn, self.prev_btn, self.play_btn, self.next_btn, self.repeat_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
+                ft.Row([self.shuffle_btn, self.prev_btn, self.play_btn, self.next_btn, self.repeat_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
                 
                 ft.Container(height=20),
                 
@@ -478,7 +487,8 @@ class MusicApp:
         self.repeat_btn.icon_color = renk if self.repeat_mode else "white24"
         if self.nav_bar.selected_index == 0:
              # Rengi güncelle
-             self.view_kesfet.content.controls[0].controls[0].controls[0].color = renk 
+             try: self.view_kesfet.content.controls[0].content.controls[0].controls[0].color = renk 
+             except: pass
         self.page.update()
         self.page.snack_bar = ft.SnackBar(ft.Text(f"Tema: {renk.capitalize()}"))
         self.page.snack_bar.open = True
@@ -581,7 +591,10 @@ class MusicApp:
                 def update_ui_safe():
                     self.audio_player.src = src
                     self.audio_player.autoplay = True
+                    # GÜNCELLEME: Sadece player için değil, ses için özel update
                     self.audio_player.update()
+                    self.page.update()
+                    
                     self.caliniyor_mu = True
                     self.play_btn.icon = "pause_circle_filled"
                     self.play_btn.disabled = False
@@ -664,6 +677,9 @@ class MusicApp:
                 self.caliniyor_mu = True
                 self.resim_konteyner.content.scale = 1.0
                 self.visualizer_active = True
+            
+            # BURADA SES İÇİN ÖZEL GÜNCELLEME
+            self.audio_player.update()
             self.page.update()
 
     def sonraki_sarki(self, e):
