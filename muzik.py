@@ -19,8 +19,9 @@ class MusicApp:
         self.setup_page()
         self.init_variables()
         
-        # --- SES MOTORU (HATA ÇÖZÜMÜ) ---
-        # Sesi oluşturuyoruz
+        # --- 2. SES MOTORU (DÜZELTİLDİ) ---
+        # ft.Audio bileşeni sayfaya görsel olarak eklenirse (page.add) mobil cihazlarda 
+        # "Unknown control" hatası verir. Bu yüzden overlay'e eklenmelidir.
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -29,25 +30,28 @@ class MusicApp:
             on_state_changed=self.audio_state_changed,
         )
         
-        # KRİTİK NOKTA: Sesi overlay'e ekle VE HEMEN GÜNCELLE
-        # Bu işlem arayüz çizilmeden ÖNCE yapılmalı.
+        # DÜZELTME BURADA YAPILDI:
+        # self.page.add(self.audio_player) yerine overlay kullanıyoruz:
         self.page.overlay.append(self.audio_player)
-        self.page.update()
-        time.sleep(0.1) # Sistemin tanıması için mikrosaniye bekle
+        self.page.update() 
+        time.sleep(0.1) # Sistemin sesi tanıması için bekle
 
-        # 2. ARAYÜZÜ OLUŞTUR
+        # 3. ARAYÜZÜ OLUŞTUR
         self.build_ui()
         
-        # 3. ARAYÜZÜ SAYFAYA EKLE
+        # 4. ARAYÜZÜ SAYFAYA EKLE
         self.page.add(self.view_kesfet) 
         self.page.add(self.nav_bar)     
+        
+        # Menüyü overlay'e ekle
         self.page.overlay.append(self.context_menu)
-        
-        # 4. KONTROLLERİ AYARLA
-        self.ses_slider.value = self.audio_player.volume * 100
-        
-        # 5. EKRANI GÖSTER (İkinci güncelleme)
         self.page.update()
+        
+        # 5. KONTROLLERİ AYARLA
+        try:
+            self.ses_slider.value = self.audio_player.volume * 100
+            self.page.update()
+        except: pass
         
         # 6. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
@@ -843,7 +847,7 @@ class MusicApp:
 
     def get_audio_url(self, video_url):
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/best', 
+            'format': 'bestaudio/best', 
             'quiet': True,
             'no_warnings': True,
             'noplaylist': True,
