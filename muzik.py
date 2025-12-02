@@ -19,8 +19,8 @@ class MusicApp:
         self.setup_page()
         self.init_variables()
         
-        # --- KRİTİK DEĞİŞİKLİK: SES MOTORU KURULUMU ---
-        # Sesi oluştur
+        # --- SES MOTORU (HATA ÇÖZÜMÜ) ---
+        # Sesi oluşturuyoruz
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -29,13 +29,11 @@ class MusicApp:
             on_state_changed=self.audio_state_changed,
         )
         
-        # HATA ÇÖZÜMÜ: Sesi 'Overlay' yerine direkt 'Page' içine ekliyoruz.
-        # Bu sayede Android "Unknown Control" hatası veremez, çünkü sayfanın içinde.
-        self.page.add(self.audio_player) 
-        
-        # Motoru hemen kaydet ki sistem tanısın
+        # KRİTİK NOKTA: Sesi overlay'e ekle VE HEMEN GÜNCELLE
+        # Bu işlem arayüz çizilmeden ÖNCE yapılmalı.
+        self.page.overlay.append(self.audio_player)
         self.page.update()
-        time.sleep(0.1) # Kısa bir güvenlik beklemesi
+        time.sleep(0.1) # Sistemin tanıması için mikrosaniye bekle
 
         # 2. ARAYÜZÜ OLUŞTUR
         self.build_ui()
@@ -48,7 +46,7 @@ class MusicApp:
         # 4. KONTROLLERİ AYARLA
         self.ses_slider.value = self.audio_player.volume * 100
         
-        # 5. EKRANI GÖSTER
+        # 5. EKRANI GÖSTER (İkinci güncelleme)
         self.page.update()
         
         # 6. Başlangıç Verileri
@@ -489,7 +487,6 @@ class MusicApp:
         self.shuffle_btn.icon_color = renk if self.shuffle_mode else "white24"
         self.repeat_btn.icon_color = renk if self.repeat_mode else "white24"
         if self.nav_bar.selected_index == 0:
-             # Rengi güncelle
              try: self.view_kesfet.content.controls[0].content.controls[0].controls[0].color = renk 
              except: pass
         self.page.update()
@@ -594,7 +591,7 @@ class MusicApp:
                 def update_ui_safe():
                     self.audio_player.src = src
                     self.audio_player.autoplay = True
-                    # GÜNCELLEME: Sadece player için değil, ses için özel update
+                    
                     self.audio_player.update()
                     self.page.update()
                     
@@ -681,7 +678,6 @@ class MusicApp:
                 self.resim_konteyner.content.scale = 1.0
                 self.visualizer_active = True
             
-            # BURADA SES İÇİN ÖZEL GÜNCELLEME
             self.audio_player.update()
             self.page.update()
 
