@@ -14,37 +14,42 @@ class MusicApp:
         self.app_running = True 
         self.mobile_mode = True 
         
-        # --- 1. AYARLARI YÜKLE ---
+        # 1. AYARLAR VE DEĞİŞKENLER
         self.load_settings() 
         self.setup_page()
         self.init_variables()
         
-        # --- 2. SES MOTORUNU EN BAŞTA KUR (KIRMIZI EKRAN ÇÖZÜMÜ) ---
+        # 2. ARAYÜZÜ OLUŞTUR
+        self.build_ui()
+        
+        # 3. SES MOTORUNU OLUŞTUR
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
-            volume=1.0,
+            volume=self.settings.get("volume", 1.0),
             on_position_changed=self.sure_guncelle,
             on_state_changed=self.audio_state_changed,
         )
-        # HATA ÇIKMAMASI İÇİN ÖNCE SAYFAYA EKLE, SONRA GÜNCELLE
-        self.page.overlay.append(self.audio_player)
+        
+        # 4. HER ŞEYİ SAYFAYA EKLE (Sıralama Önemli!)
+        self.page.overlay.append(self.audio_player) 
+        self.page.overlay.append(self.context_menu) 
+        
+        self.page.add(self.view_kesfet) 
+        self.page.add(self.nav_bar)     
+        
+        # 5. AYARLARI KONTROLLERE İŞLE
+        self.ses_slider.value = self.audio_player.volume * 100
+        
+        # 6. VE FİNAL: TEK SEFERDE GÜNCELLE
         self.page.update()
-        time.sleep(0.1) # Kısa bir nefes aldır (Sistemin tanıması için)
-
-        # --- 3. ARAYÜZÜ OLUŞTUR ---
-        self.build_ui()
         
-        # Ses ayarlarını uygula
-        try:
-            self.audio_player.volume = self.settings.get("volume", 1.0)
-            self.ses_slider.value = self.audio_player.volume * 100
-            self.audio_player.update()
-        except: pass
-        
-        # Başlangıç
+        # 7. Başlangıç İşlemleri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
+        
+        # Görselleştiriciyi başlat
+        threading.Thread(target=self.visualizer_loop, daemon=True).start()
 
     def load_settings(self):
         self.settings_file = "ayarlar.json"
@@ -153,10 +158,7 @@ class MusicApp:
         )
 
         self.durum_yazisi = ft.Text("Müzik bekleniyor...", color="white54", size=12)
-        
-        # --- İSİM ALANI GÜNCELLEMESİ (Width kaldırıldı, esnek yapıldı) ---
         self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
-        
         self.gecen_sure_txt = ft.Text("00:00", size=12, color="white54")
         self.toplam_sure_txt = ft.Text("00:00", size=12, color="white54")
         
@@ -202,9 +204,15 @@ class MusicApp:
             padding=15,
             expand=True,
             content=ft.Column([
+                # --- BAŞLIK ALANI (YENİLENDİ: Porsche Tarzı İmza) ---
                 ft.Row(
                     controls=[
-                        ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
+                        ft.Row([
+                            ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
+                            # PORSCHE TARZI GENİŞ VE MODERN FONT
+                            ft.Text(" BEDIRHANY", size=16, color="white", weight="bold", font_family="PorscheTarzi") 
+                        ], spacing=5, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                        
                         ft.PopupMenuButton(
                             icon="color_lens",
                             items=[
@@ -252,7 +260,7 @@ class MusicApp:
             ])
         )
 
-        # --- PLAYER DÜZENİ (YAPIŞIK BUTON VE İSİM) ---
+        # --- PLAYER DÜZENİ ---
         self.view_player = ft.Container(
             padding=20,
             alignment=ft.alignment.center,
@@ -269,15 +277,12 @@ class MusicApp:
                 self.visualizer_row,
                 ft.Container(height=10),
                 
-                # --- YENİ YAPI: SIKIŞIK ROW ---
-                # main_axis_size="min" diyerek ortada toplanmalarını sağladık
                 ft.Column([
                     ft.Row(
                         controls=[
                             ft.Container(
                                 content=self.suanki_sarki_adi, 
-                                # Maksimum genişlik veriyoruz ama sabit değil, esnek
-                                constraints=ft.BoxConstraints(max_width=250)
+                                width=250
                             ),
                             ft.IconButton(
                                 icon="more_vert", 
@@ -287,7 +292,7 @@ class MusicApp:
                                 on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
                             )
                         ],
-                        alignment=ft.MainAxisAlignment.CENTER, # Ortada dursunlar
+                        alignment=ft.MainAxisAlignment.CENTER,
                         vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     ),
                     self.durum_yazisi
@@ -324,12 +329,6 @@ class MusicApp:
             ),
             open=False
         )
-        self.page.overlay.append(self.context_menu)
-
-        self.page.add(self.view_kesfet)
-        self.page.add(self.nav_bar)
-
-        threading.Thread(target=self.visualizer_loop, daemon=True).start()
 
     def nav_degisti(self, e):
         index = e.control.selected_index
@@ -478,7 +477,8 @@ class MusicApp:
         self.shuffle_btn.icon_color = renk if self.shuffle_mode else "white24"
         self.repeat_btn.icon_color = renk if self.repeat_mode else "white24"
         if self.nav_bar.selected_index == 0:
-             self.view_kesfet.content.controls[0].controls[0].color = renk 
+             # Rengi güncelle
+             self.view_kesfet.content.controls[0].controls[0].controls[0].color = renk 
         self.page.update()
         self.page.snack_bar = ft.SnackBar(ft.Text(f"Tema: {renk.capitalize()}"))
         self.page.snack_bar.open = True
@@ -486,6 +486,10 @@ class MusicApp:
 
     def visualizer_loop(self):
         while self.app_running:
+            if self.view_player not in self.page.controls:
+                 time.sleep(0.5)
+                 continue
+
             if self.caliniyor_mu and self.visualizer_active:
                 for bar in self.visualizer_bars: bar.height = random.randint(5, 40)
                 if random.random() > 0.85: 
@@ -569,7 +573,6 @@ class MusicApp:
                     src = os.path.abspath(bulunan_dosya)
                     duration_sec = self.parse_duration(secilen_sarki.get('duration', '00:00')) 
                 else:
-                    # GÜNCEL KOD: m4a yerine daha genel bir format
                     tam_link = f"https://www.youtube.com/watch?v={video_id}"
                     src, _, duration_sec = self.get_audio_url(tam_link)
 
@@ -824,9 +827,8 @@ class MusicApp:
         threading.Thread(target=thread_func, daemon=True).start()
 
     def get_audio_url(self, video_url):
-        # Formatı 'bestaudio/best' yaparak en geniş uyumluluğu sağlıyoruz
         ydl_opts = {
-            'format': 'bestaudio/best', 
+            'format': 'bestaudio[ext=m4a]/best', 
             'quiet': True,
             'no_warnings': True,
             'noplaylist': True,
@@ -921,6 +923,10 @@ class MusicApp:
         self.page.update()
 
 def main(page: ft.Page):
+    # PORSCHE TARZI FONT YÜKLEME
+    page.fonts = {
+        "PorscheTarzi": "https://github.com/google/fonts/raw/main/ofl/brunoacesc/BrunoAceSC-Regular.ttf"
+    }
     app = MusicApp(page)
 
 ft.app(target=main)
