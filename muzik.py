@@ -13,11 +13,13 @@ class MusicApp:
         self.page = page
         self.app_running = True 
         self.mobile_mode = True 
+        
+        # --- 1. AYARLARI YÜKLE ---
         self.load_settings() 
         self.setup_page()
         self.init_variables()
         
-        # SES MOTORUNU EN BAŞTA BAŞLAT (KIRMIZI EKRAN ÇÖZÜMÜ)
+        # --- 2. SES MOTORUNU EN BAŞTA KUR (KIRMIZI EKRAN ÇÖZÜMÜ) ---
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -25,15 +27,20 @@ class MusicApp:
             on_position_changed=self.sure_guncelle,
             on_state_changed=self.audio_state_changed,
         )
-        # Sayfaya hemen ekle ki "Unknown control" hatası vermesin
+        # HATA ÇIKMAMASI İÇİN ÖNCE SAYFAYA EKLE, SONRA GÜNCELLE
         self.page.overlay.append(self.audio_player)
         self.page.update()
+        time.sleep(0.1) # Kısa bir nefes aldır (Sistemin tanıması için)
 
+        # --- 3. ARAYÜZÜ OLUŞTUR ---
         self.build_ui()
         
         # Ses ayarlarını uygula
-        self.audio_player.volume = self.settings.get("volume", 1.0)
-        self.ses_slider.value = self.audio_player.volume * 100
+        try:
+            self.audio_player.volume = self.settings.get("volume", 1.0)
+            self.ses_slider.value = self.audio_player.volume * 100
+            self.audio_player.update()
+        except: pass
         
         # Başlangıç
         self.kesfet_kategori_getir("Rastgele")
@@ -146,8 +153,10 @@ class MusicApp:
         )
 
         self.durum_yazisi = ft.Text("Müzik bekleniyor...", color="white54", size=12)
-        # Şarkı ismi için Text kontrolü
-        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align="center")
+        
+        # --- İSİM ALANI GÜNCELLEMESİ (Width kaldırıldı, esnek yapıldı) ---
+        self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS)
+        
         self.gecen_sure_txt = ft.Text("00:00", size=12, color="white54")
         self.toplam_sure_txt = ft.Text("00:00", size=12, color="white54")
         
@@ -243,21 +252,7 @@ class MusicApp:
             ])
         )
 
-        # --- PLAYER DÜZENİ (LISTTILE İLE DÜZELTİLDİ) ---
-        # ListTile kullanımı sayesinde buton asla kaybolmaz, yazı uzunsa ... olur.
-        self.player_info_tile = ft.ListTile(
-            title=self.suanki_sarki_adi,
-            subtitle=self.durum_yazisi,
-            trailing=ft.IconButton(
-                icon="more_vert", 
-                icon_color="white", 
-                icon_size=30,
-                tooltip="Seçenekler",
-                on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
-            ),
-            content_padding=0 # Kenar boşluklarını sıfırla, ortada dursun
-        )
-
+        # --- PLAYER DÜZENİ (YAPIŞIK BUTON VE İSİM) ---
         self.view_player = ft.Container(
             padding=20,
             alignment=ft.alignment.center,
@@ -274,10 +269,31 @@ class MusicApp:
                 self.visualizer_row,
                 ft.Container(height=10),
                 
-                # ListTile ile düzeltilmiş bilgi alanı
-                ft.Container(content=self.player_info_tile, padding=ft.padding.symmetric(horizontal=10)),
+                # --- YENİ YAPI: SIKIŞIK ROW ---
+                # main_axis_size="min" diyerek ortada toplanmalarını sağladık
+                ft.Column([
+                    ft.Row(
+                        controls=[
+                            ft.Container(
+                                content=self.suanki_sarki_adi, 
+                                # Maksimum genişlik veriyoruz ama sabit değil, esnek
+                                constraints=ft.BoxConstraints(max_width=250)
+                            ),
+                            ft.IconButton(
+                                icon="more_vert", 
+                                icon_color="white", 
+                                icon_size=26,
+                                tooltip="Seçenekler",
+                                on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
+                            )
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER, # Ortada dursunlar
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    self.durum_yazisi
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
                 
-                ft.Container(height=20),
+                ft.Container(height=30),
                 
                 ft.Row([self.gecen_sure_txt, self.sure_slider, self.toplam_sure_txt], alignment=ft.MainAxisAlignment.CENTER),
                 
@@ -553,6 +569,7 @@ class MusicApp:
                     src = os.path.abspath(bulunan_dosya)
                     duration_sec = self.parse_duration(secilen_sarki.get('duration', '00:00')) 
                 else:
+                    # GÜNCEL KOD: m4a yerine daha genel bir format
                     tam_link = f"https://www.youtube.com/watch?v={video_id}"
                     src, _, duration_sec = self.get_audio_url(tam_link)
 
@@ -735,7 +752,7 @@ class MusicApp:
                 ft.IconButton(icon="more_vert", icon_size=20, icon_color="grey", on_click=lambda e: self.menuyu_ac(e, veri))
             ]),
             padding=10,
-            bgcolor="#15ffffff", # Saydam beyaz
+            bgcolor="#15ffffff", 
             border_radius=15,
         )
         return ft.GestureDetector(
@@ -807,8 +824,9 @@ class MusicApp:
         threading.Thread(target=thread_func, daemon=True).start()
 
     def get_audio_url(self, video_url):
+        # Formatı 'bestaudio/best' yaparak en geniş uyumluluğu sağlıyoruz
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/best', # Hızlı format
+            'format': 'bestaudio/best', 
             'quiet': True,
             'no_warnings': True,
             'noplaylist': True,
