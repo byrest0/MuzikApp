@@ -13,36 +13,48 @@ class MusicApp:
         self.page = page
         self.app_running = True 
         self.mobile_mode = True 
+        self.audio_player = None # Güvenlik için başta boş
         
         # 1. AYARLARI YÜKLE
         self.load_settings() 
         self.setup_page()
         self.init_variables()
         
-        # 2. SES MOTORUNU OLUŞTUR
-        # Sürüm 0.25.2'ye sabitlediğimiz için bu yöntem %100 çalışır.
-        self.audio_player = ft.Audio(
-            src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
-            autoplay=False, 
-            volume=self.settings.get("volume", 1.0),
-            on_position_changed=self.sure_guncelle,
-            on_state_changed=self.audio_state_changed,
-        )
-        # Sesi overlay'e ekle (Eski ve sağlam yöntem)
-        self.page.overlay.append(self.audio_player)
-        self.page.update() # Sesi sisteme tanıt
-
-        # 3. ARAYÜZÜ OLUŞTUR
+        # 2. ARAYÜZÜ OLUŞTUR (Henüz ekleme yapma)
         self.build_ui()
         
-        # 4. SAYFAYA EKLE
+        # 3. ARAYÜZÜ SAYFAYA EKLE
         self.page.add(self.view_kesfet) 
         self.page.add(self.nav_bar)     
         self.page.overlay.append(self.context_menu)
         
+        # 4. SAYFAYI GÜNCELLE (Ekran çizilsin)
         self.page.update()
+
+        # --- 5. SES MOTORU (EN GÜVENLİ YÖNTEM) ---
+        # Adım A: İçi boş bir player oluştur
+        self.audio_player = ft.Audio()
         
-        # 5. Başlangıç Verileri
+        # Adım B: Sayfanın görünmez katmanına ekle
+        self.page.overlay.append(self.audio_player)
+        self.page.update() # Sisteme "Ben buradayım" desin
+        time.sleep(0.1)    # Nefes alma payı
+        
+        # Adım C: Şimdi özellikleri yükle (Artık hata veremez)
+        self.audio_player.src = "https://luan.xyz/files/audio/ambient_c_motion.mp3"
+        self.audio_player.autoplay = False
+        self.audio_player.volume = self.settings.get("volume", 1.0)
+        self.audio_player.on_position_changed = self.sure_guncelle
+        self.audio_player.on_state_changed = self.audio_state_changed
+        self.audio_player.update()
+        
+        # 6. KONTROLLERİ AYARLA
+        try:
+            self.ses_slider.value = self.audio_player.volume * 100
+            self.page.update()
+        except: pass
+        
+        # 7. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
@@ -68,31 +80,22 @@ class MusicApp:
         self.page.title = "MyMusics Mobile"
         self.page.theme_mode = "dark"
         self.page.bgcolor = "#000000" 
-        # KENAR BOŞLUKLARINI SIFIRLA (TAM EKRAN)
         self.page.padding = 0 
-        self.page.spacing = 0
         self.page.scroll = None 
-        self.page.horizontal_alignment = "stretch" # Genişle
+        self.page.horizontal_alignment = "stretch" 
         
         self.current_theme_color = self.settings["theme"]
         self.page.theme = ft.Theme(
             color_scheme_seed=self.current_theme_color,
-            # Scrollbar'ı gizle ki daha temiz dursun
-            scrollbar_theme=ft.ScrollbarTheme(thickness=0),
-            page_transitions=ft.PageTransitionsTheme(
-                android=ft.PageTransitionTheme.FADE_UPWARDS,
-                ios=ft.PageTransitionTheme.CUPERTINO
-            )
+            scrollbar_theme=ft.ScrollbarTheme(thickness=0)
         )
 
     def init_variables(self):
         self.favoriler_dosyasi = "favoriler.json"
         self.indirilenler_klasoru = "downloaded_songs"
-        
         if not os.path.exists(self.indirilenler_klasoru):
             try: os.makedirs(self.indirilenler_klasoru)
             except: pass
-            
         self.favori_listesi = []
         if os.path.exists(self.favoriler_dosyasi):
             try:
@@ -100,15 +103,12 @@ class MusicApp:
                     content = f.read()
                     if content: self.favori_listesi = json.loads(content)
             except: self.favori_listesi = []
-
         self.caliniyor_mu = False
         self.oynatma_listesi = [] 
         self.gecmis_listesi = []
         self.suanki_index = -1 
-        
         self.shuffle_mode = self.settings["shuffle"]
         self.repeat_mode = self.settings["repeat"]
-        
         self.is_slider_changing = False
         self.visualizer_active = True
         self.secilen_menu_sarkisi = None
@@ -128,15 +128,7 @@ class MusicApp:
         )
         
         self.arama_kutusu = ft.TextField(
-            hint_text="Şarkı veya sanatçı ara...", 
-            border_radius=25, 
-            bgcolor="#22ffffff", 
-            border_width=0, 
-            prefix_icon="search", 
-            content_padding=15,
-            height=50,
-            on_submit=self.arama_yap,
-            text_size=16
+            hint_text="Şarkı veya sanatçı ara...", border_radius=25, bgcolor="#22ffffff", border_width=0, prefix_icon="search", content_padding=15, height=50, on_submit=self.arama_yap, text_size=16
         )
         
         self.kesfet_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
@@ -144,58 +136,29 @@ class MusicApp:
         self.favori_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
         
         self.visualizer_bars = []
-        for _ in range(20): 
-            self.visualizer_bars.append(
-                ft.Container(
-                    width=6, 
-                    height=10, 
-                    bgcolor=self.current_theme_color, 
-                    border_radius=3,
-                    animate=ft.Animation(300, "easeOut") 
-                )
-            )
-        
-        self.visualizer_row = ft.Row(
-            self.visualizer_bars, 
-            alignment=ft.MainAxisAlignment.CENTER, 
-            spacing=4, 
-            height=60,
-            opacity=0 
-        )
+        for _ in range(25): 
+            self.visualizer_bars.append(ft.Container(width=6, height=10, bgcolor=self.current_theme_color, border_radius=3, animate=ft.Animation(300, "easeOut")))
+        self.visualizer_row = ft.Row(self.visualizer_bars, alignment=ft.MainAxisAlignment.CENTER, spacing=4, height=60, opacity=0)
 
         self.durum_yazisi = ft.Text("Müzik bekleniyor...", color="white54", size=12)
         self.suanki_sarki_adi = ft.Text("Seçim Yok", size=18, weight="bold", max_lines=1, overflow=ft.TextOverflow.ELLIPSIS, text_align="center")
         self.gecen_sure_txt = ft.Text("00:00", size=12, color="white54")
         self.toplam_sure_txt = ft.Text("00:00", size=12, color="white54")
         
-        self.suanki_resim = ft.Image(
-            src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg", 
-            width=320, height=320, 
-            fit=ft.ImageFit.COVER, 
-            border_radius=20,
-            animate_scale=ft.Animation(400, "bounceOut")
-        )
-        
+        self.suanki_resim = ft.Image(src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg", width=340, height=340, fit=ft.ImageFit.COVER, border_radius=20, animate_scale=ft.Animation(400, "bounceOut"))
         self.loading_indicator = ft.ProgressRing(visible=False, color="white")
         
         self.resim_konteyner = ft.Container(
             content=ft.Stack([self.suanki_resim, ft.Container(content=self.loading_indicator, alignment=ft.alignment.center)], alignment=ft.alignment.center),
-            shadow=ft.BoxShadow(blur_radius=30, color="black", spread_radius=2), 
-            border_radius=20, 
-            alignment=ft.alignment.center,
-            padding=0, 
-            animate=ft.Animation(500, "easeOut") 
+            shadow=ft.BoxShadow(blur_radius=30, color="black", spread_radius=2), border_radius=20, alignment=ft.alignment.center, padding=0, animate=ft.Animation(500, "easeOut")
         )
 
         self.play_btn = ft.IconButton(icon="play_circle_filled", icon_size=80, icon_color="white", disabled_color="white24", on_click=self.toggle_play_pause, disabled=True)
         self.prev_btn = ft.IconButton(icon="skip_previous", icon_size=40, icon_color="white", disabled_color="white24", disabled=True, on_click=self.onceki_sarki)
         self.next_btn = ft.IconButton(icon="skip_next", icon_size=40, icon_color="white", disabled_color="white24", disabled=True, on_click=self.sonraki_sarki)
         
-        shuffle_col = self.current_theme_color if self.shuffle_mode else "white24"
-        repeat_col = self.current_theme_color if self.repeat_mode else "white24"
-        
-        self.shuffle_btn = ft.IconButton(icon="shuffle", icon_size=24, icon_color=shuffle_col, on_click=self.toggle_shuffle)
-        self.repeat_btn = ft.IconButton(icon="repeat", icon_size=24, icon_color=repeat_col, on_click=self.toggle_repeat)
+        self.shuffle_btn = ft.IconButton(icon="shuffle", icon_size=24, icon_color="white24", on_click=self.toggle_shuffle)
+        self.repeat_btn = ft.IconButton(icon="repeat", icon_size=24, icon_color="white24", on_click=self.toggle_repeat)
         
         self.favori_butonu = ft.IconButton(icon="favorite_border", icon_size=26, icon_color="white", disabled_color="white24", on_click=self.favori_islem)
         self.indir_butonu = ft.IconButton(icon="download", icon_size=26, icon_color="white", disabled_color="white24", disabled=True, on_click=self.indirme_baslat)
@@ -207,8 +170,7 @@ class MusicApp:
 
         # --- VIEW TANIMLAMALARI ---
         self.view_kesfet = ft.Container(
-            padding=0, 
-            expand=True,
+            padding=0, expand=True,
             content=ft.Column([
                 ft.Container(
                     padding=ft.padding.symmetric(horizontal=15, vertical=10),
@@ -218,25 +180,17 @@ class MusicApp:
                                 ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
                                 ft.Text(" BEDIRHANY", size=16, color="white", weight="bold", font_family="PorscheTarzi") 
                             ], spacing=5, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                            
-                            ft.PopupMenuButton(
-                                icon="color_lens",
-                                items=[
-                                    ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
-                                    ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
-                                    ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
-                                    ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
-                                    ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
-                                    ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
-                                ]
-                            )
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-                    )
+                            ft.PopupMenuButton(icon="color_lens", items=[
+                                ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
+                                ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
+                                ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
+                                ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
+                                ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
+                                ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
+                            ])
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
                 ),
-                
                 ft.Container(padding=ft.padding.only(left=15), content=ft.Text("Keşfet", size=28, weight="bold", color="white")),
-                
                 ft.Container(
                     padding=ft.padding.symmetric(horizontal=5),
                     content=ft.Row([
@@ -244,114 +198,59 @@ class MusicApp:
                         ft.ElevatedButton("Yabancı", on_click=lambda _: self.kesfet_kategori_getir("Yabancı"), bgcolor="blue", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Mix", on_click=lambda _: self.kesfet_kategori_getir("Rastgele"), bgcolor="purple", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.IconButton(icon="hourglass_bottom", on_click=self.zaman_yolculugu, icon_color="orange"),
-                    ], scroll="auto"),
-                    height=60
+                    ], scroll="auto"), height=60
                 ),
                 self.kesfet_sonuclari
             ])
         )
 
-        self.view_arama = ft.Container(
-            padding=0, 
-            expand=True,
-            content=ft.Column([
-                ft.Container(padding=ft.padding.all(15), content=ft.Text("Arama", size=28, weight="bold", color="white")),
-                ft.Container(padding=ft.padding.symmetric(horizontal=15), content=self.arama_kutusu),
-                self.arama_sonuclari
-            ])
-        )
+        self.view_arama = ft.Container(padding=0, expand=True, content=ft.Column([
+            ft.Container(padding=ft.padding.all(15), content=ft.Text("Arama", size=28, weight="bold", color="white")),
+            ft.Container(padding=ft.padding.symmetric(horizontal=15), content=self.arama_kutusu),
+            self.arama_sonuclari
+        ]))
 
-        self.view_kitaplik = ft.Container(
-            padding=0, 
-            expand=True,
-            content=ft.Column([
-                ft.Container(padding=ft.padding.all(15), content=ft.Text("Kitaplık", size=28, weight="bold", color="white")),
-                self.favori_sonuclari
-            ])
-        )
+        self.view_kitaplik = ft.Container(padding=0, expand=True, content=ft.Column([
+            ft.Container(padding=ft.padding.all(15), content=ft.Text("Kitaplık", size=28, weight="bold", color="white")),
+            self.favori_sonuclari
+        ]))
 
-        # --- PLAYER DÜZENİ ---
         self.view_player = ft.Container(
-            padding=0,
-            alignment=ft.alignment.center,
-            expand=True,
-            gradient=ft.LinearGradient(
-                begin=ft.alignment.top_center,
-                end=ft.alignment.bottom_center,
-                colors=["#1a1a1a", "#000000"]
-            ),
+            padding=0, alignment=ft.alignment.center, expand=True,
+            gradient=ft.LinearGradient(begin=ft.alignment.top_center, end=ft.alignment.bottom_center, colors=["#1a1a1a", "#000000"]),
             content=ft.Column([
-                ft.Container(height=30),
-                self.resim_konteyner,
-                ft.Container(height=20),
-                self.visualizer_row,
-                ft.Container(height=10),
-                
+                ft.Container(height=30), self.resim_konteyner, ft.Container(height=20), self.visualizer_row, ft.Container(height=10),
                 ft.Column([
-                    ft.Row(
-                        controls=[
-                            ft.Container(
-                                content=self.suanki_sarki_adi, 
-                                width=280
-                            ),
-                            ft.IconButton(
-                                icon="more_vert", 
-                                icon_color="white", 
-                                icon_size=28,
-                                tooltip="Seçenekler",
-                                on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None)
-                            )
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
+                    ft.Row(controls=[
+                        ft.Container(content=self.suanki_sarki_adi, width=280),
+                        ft.IconButton(icon="more_vert", icon_color="white", icon_size=28, tooltip="Seçenekler", on_click=lambda _: self.menuyu_ac(None, self.oynatma_listesi[self.suanki_index] if self.suanki_index != -1 else None))
+                    ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                     self.durum_yazisi
                 ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=2),
-                
                 ft.Container(height=30),
-                
                 ft.Row([self.gecen_sure_txt, self.sure_slider, self.toplam_sure_txt], alignment=ft.MainAxisAlignment.CENTER),
-                
                 ft.Row([self.shuffle_btn, self.prev_btn, self.play_btn, self.next_btn, self.repeat_btn], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
-                
                 ft.Container(height=20),
-                
                 ft.Row([
-                    self.favori_butonu, 
-                    self.indir_butonu, 
-                    self.video_butonu,
-                    ft.Container(width=20),
-                    ft.Icon("volume_down", size=16, color="white54"),
-                    self.ses_slider,
-                    ft.Icon("volume_up", size=16, color="white54")
+                    self.favori_butonu, self.indir_butonu, self.video_butonu, ft.Container(width=20),
+                    ft.Icon("volume_down", size=16, color="white54"), self.ses_slider, ft.Icon("volume_up", size=16, color="white54")
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, scroll="auto")
         )
 
         self.context_menu_items = ft.Column(tight=True)
-        self.context_menu = ft.BottomSheet(
-            ft.Container(
-                self.context_menu_items,
-                padding=20,
-                border_radius=ft.border_radius.only(top_left=20, top_right=20),
-                bgcolor="#222222",
-            ),
-            open=False
-        )
+        self.context_menu = ft.BottomSheet(ft.Container(self.context_menu_items, padding=20, border_radius=ft.border_radius.only(top_left=20, top_right=20), bgcolor="#222222"), open=False)
 
     def nav_degisti(self, e):
         index = e.control.selected_index
         try: self.page.controls.pop(0) 
         except: pass
-        
         if index == 0: self.page.controls.insert(0, self.view_kesfet)
         elif index == 1: self.page.controls.insert(0, self.view_arama)
         elif index == 2: 
             self.favorileri_listele()
             self.page.controls.insert(0, self.view_kitaplik)
         elif index == 3: self.page.controls.insert(0, self.view_player)
-        
         self.page.update()
 
     def zaman_yolculugu(self, e):
@@ -367,32 +266,24 @@ class MusicApp:
         self.context_menu.open = False
         self.context_menu.update()
         sarki = self.secilen_menu_sarkisi
-        
         if islem == "indir":
             self.indir_butonu.data = sarki['id']
             old_title = self.suanki_sarki_adi.value
             if not self.caliniyor_mu: self.suanki_sarki_adi.value = sarki['title']
             self.indirme_baslat(None) 
             if not self.caliniyor_mu: self.suanki_sarki_adi.value = old_title
-        
-        elif islem == "sil":
-            self.sarkiyi_sil(sarki)
-
+        elif islem == "sil": self.sarkiyi_sil(sarki)
         elif islem == "kopyala":
             url = f"https://www.youtube.com/watch?v={sarki['id']}"
             self.page.set_clipboard(url)
             self.page.snack_bar = ft.SnackBar(ft.Text("Link kopyalandı!"))
             self.page.snack_bar.open = True
-        
-        elif islem == "favori_degistir":
-            self.menu_favori_yap(sarki)
-
+        elif islem == "favori_degistir": self.menu_favori_yap(sarki)
         self.page.update()
 
     def menuyu_ac(self, e, sarki):
         if not sarki: return
         self.secilen_menu_sarkisi = sarki
-        
         temiz_isim = self.sanitize_filename(sarki['title'])
         indirildi = False
         if os.path.exists(self.indirilenler_klasoru):
@@ -400,27 +291,13 @@ class MusicApp:
                 if temiz_isim in dosya:
                     indirildi = True
                     break
-        
         favori_mi = any(s['id'] == sarki['id'] for s in self.favori_listesi)
-
-        items = [
-            ft.Text("Seçenekler", weight="bold", size=18, text_align="center"),
-            ft.Divider(),
-            ft.ListTile(leading=ft.Icon("play_arrow_rounded"), title=ft.Text("Hemen Oynat"), on_click=lambda _: self.menu_islem_oynat(sarki)),
-        ]
-
-        if favori_mi:
-            items.append(ft.ListTile(leading=ft.Icon("favorite", color="red"), title=ft.Text("Favorilerden Çıkar", color="red"), on_click=lambda _: self.menu_islem("favori_degistir")))
-        else:
-            items.append(ft.ListTile(leading=ft.Icon("favorite_border"), title=ft.Text("Favorilere Ekle"), on_click=lambda _: self.menu_islem("favori_degistir")))
-
-        if indirildi:
-            items.append(ft.ListTile(leading=ft.Icon("delete", color="red"), title=ft.Text("Şarkıyı Sil", color="red"), on_click=lambda _: self.menu_islem("sil")))
-        else:
-            items.append(ft.ListTile(leading=ft.Icon("download"), title=ft.Text("İndir"), on_click=lambda _: self.menu_islem("indir")))
-
+        items = [ft.Text("Seçenekler", weight="bold", size=18, text_align="center"), ft.Divider(), ft.ListTile(leading=ft.Icon("play_arrow_rounded"), title=ft.Text("Hemen Oynat"), on_click=lambda _: self.menu_islem_oynat(sarki))]
+        if favori_mi: items.append(ft.ListTile(leading=ft.Icon("favorite", color="red"), title=ft.Text("Favorilerden Çıkar", color="red"), on_click=lambda _: self.menu_islem("favori_degistir")))
+        else: items.append(ft.ListTile(leading=ft.Icon("favorite_border"), title=ft.Text("Favorilere Ekle"), on_click=lambda _: self.menu_islem("favori_degistir")))
+        if indirildi: items.append(ft.ListTile(leading=ft.Icon("delete", color="red"), title=ft.Text("Şarkıyı Sil", color="red"), on_click=lambda _: self.menu_islem("sil")))
+        else: items.append(ft.ListTile(leading=ft.Icon("download"), title=ft.Text("İndir"), on_click=lambda _: self.menu_islem("indir")))
         items.append(ft.ListTile(leading=ft.Icon("copy"), title=ft.Text("Linki Kopyala"), on_click=lambda _: self.menu_islem("kopyala")))
-        
         self.context_menu_items.controls = items
         self.context_menu.open = True
         self.context_menu.update()
@@ -440,9 +317,7 @@ class MusicApp:
             if self.indir_butonu.data == sarki['id']:
                 self.favori_butonu.icon = "favorite"
                 self.favori_butonu.icon_color = "red"
-
         with open(self.favoriler_dosyasi, "w", encoding="utf-8") as f: json.dump(self.favori_listesi, f)
-        
         self.page.snack_bar = ft.SnackBar(ft.Text(msj))
         self.page.snack_bar.open = True
         if self.nav_bar.selected_index == 2: self.favorileri_listele() 
@@ -457,20 +332,16 @@ class MusicApp:
                     os.remove(os.path.join(self.indirilenler_klasoru, dosya))
                     silindi = True
                     break
-            
             if silindi:
                 self.page.snack_bar = ft.SnackBar(ft.Text(f"{sarki['title']} silindi!"), bgcolor="red")
                 self.indir_butonu.icon = "download"
                 self.indir_butonu.icon_color = "white"
                 self.indir_butonu.disabled = False
                 if self.nav_bar.selected_index == 2: self.favorileri_listele()
-            else:
-                self.page.snack_bar = ft.SnackBar(ft.Text("Dosya zaten yok veya bulunamadı."))
-            
+            else: self.page.snack_bar = ft.SnackBar(ft.Text("Dosya zaten yok veya bulunamadı."))
             self.page.snack_bar.open = True
             self.page.update()
-        except Exception as e:
-            print(e)
+        except Exception as e: print(e)
 
     def menu_islem_oynat(self, sarki):
         self.context_menu.open = False
@@ -499,7 +370,6 @@ class MusicApp:
             if self.view_player not in self.page.controls:
                  time.sleep(0.5)
                  continue
-
             if self.caliniyor_mu and self.visualizer_active:
                 for bar in self.visualizer_bars: bar.height = random.randint(5, 40)
                 if random.random() > 0.85: 
@@ -528,13 +398,14 @@ class MusicApp:
     def audio_state_changed(self, e):
         if e.data == "completed":
             if self.repeat_mode:
-                self.audio_player.seek(0)
-                self.audio_player.resume()
+                if self.audio_player:
+                    self.audio_player.seek(0)
+                    self.audio_player.resume()
             else: self.sonraki_sarki(None)
 
     def slider_change_start(self, e): self.is_slider_changing = True
     def slider_change_end(self, e):
-        if self.audio_player.src:
+        if self.audio_player:
             self.audio_player.seek(int(e.control.value))
         self.is_slider_changing = False
 
@@ -549,7 +420,6 @@ class MusicApp:
 
     def oynat(self, index):
         if index < 0 or index >= len(self.oynatma_listesi): return
-        
         self.suanki_index = index
         secilen_sarki = self.oynatma_listesi[index]
         video_id = secilen_sarki['id']
@@ -565,7 +435,6 @@ class MusicApp:
         self.play_btn.icon = "hourglass_empty"
         self.play_btn.disabled = True
         self.loading_indicator.visible = True 
-        
         self.page.update()
 
         def background_load():
@@ -589,6 +458,7 @@ class MusicApp:
                 if not src: raise Exception("Kaynak yok")
 
                 def update_ui_safe():
+                    if not self.audio_player: return
                     self.audio_player.src = src
                     self.audio_player.autoplay = True
                     self.audio_player.update()
@@ -631,7 +501,6 @@ class MusicApp:
                             if temiz_ad in f:
                                 indirildi_mi = True
                                 break
-                    
                     if indirildi_mi:
                         self.indir_butonu.icon = "check_circle"
                         self.indir_butonu.icon_color = "green"
@@ -641,7 +510,6 @@ class MusicApp:
                         self.indir_butonu.icon_color = "white"
                         self.indir_butonu.disabled = False
                         self.indir_butonu.data = video_id
-                    
                     self.page.update()
                 
                 try: self.page.run_task(update_ui_safe)
@@ -661,7 +529,7 @@ class MusicApp:
         threading.Thread(target=background_load, daemon=True).start()
 
     def toggle_play_pause(self, e):
-        if self.audio_player.src:
+        if self.audio_player and self.audio_player.src:
             if self.caliniyor_mu:
                 self.audio_player.pause()
                 self.play_btn.icon = "play_circle_filled"
