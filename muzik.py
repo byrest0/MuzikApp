@@ -19,7 +19,8 @@ class MusicApp:
         self.setup_page()
         self.init_variables()
         
-        # 2. SES MOTORUNU EN BAŞTA KUR (SES GELMESİ İÇİN KRİTİK)
+        # --- KRİTİK DEĞİŞİKLİK: SES MOTORU KURULUMU ---
+        # Sesi oluştur
         self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -27,28 +28,30 @@ class MusicApp:
             on_position_changed=self.sure_guncelle,
             on_state_changed=self.audio_state_changed,
         )
-        # Sesi overlay'e ekliyoruz (Eski çalışan yöntem)
-        self.page.overlay.append(self.audio_player)
         
-        # SİSTEMİN SESİ TANIMASI İÇİN İLK GÜNCELLEME
+        # HATA ÇÖZÜMÜ: Sesi 'Overlay' yerine direkt 'Page' içine ekliyoruz.
+        # Bu sayede Android "Unknown Control" hatası veremez, çünkü sayfanın içinde.
+        self.page.add(self.audio_player) 
+        
+        # Motoru hemen kaydet ki sistem tanısın
         self.page.update()
-        time.sleep(0.1) 
+        time.sleep(0.1) # Kısa bir güvenlik beklemesi
 
-        # 3. ARAYÜZÜ OLUŞTUR
+        # 2. ARAYÜZÜ OLUŞTUR
         self.build_ui()
         
-        # 4. ARAYÜZÜ SAYFAYA EKLE
+        # 3. ARAYÜZÜ SAYFAYA EKLE
         self.page.add(self.view_kesfet) 
         self.page.add(self.nav_bar)     
         self.page.overlay.append(self.context_menu)
         
-        # 5. KONTROLLERİ AYARLA
+        # 4. KONTROLLERİ AYARLA
         self.ses_slider.value = self.audio_player.volume * 100
         
-        # 6. ARAYÜZÜ GÖSTER
+        # 5. EKRANI GÖSTER
         self.page.update()
         
-        # 7. Başlangıç Verileri
+        # 6. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
@@ -74,9 +77,9 @@ class MusicApp:
         self.page.title = "MyMusics Mobile"
         self.page.theme_mode = "dark"
         self.page.bgcolor = "#000000" 
-        self.page.padding = 0 # TAM EKRAN İÇİN SIFIRLANDI
+        self.page.padding = 0 
         self.page.scroll = None 
-        self.page.horizontal_alignment = "stretch" # YAYILMA AYARI
+        self.page.horizontal_alignment = "stretch" 
         
         self.current_theme_color = self.settings["theme"]
         self.page.theme = ft.Theme(
@@ -206,7 +209,7 @@ class MusicApp:
 
         # --- VIEW TANIMLAMALARI ---
         self.view_kesfet = ft.Container(
-            padding=0, # KENAR BOŞLUĞU YOK
+            padding=0, 
             expand=True,
             content=ft.Column([
                 ft.Container(
