@@ -1,0 +1,48 @@
+name: Android APK Yapici
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Kodlari Cek
+      uses: actions/checkout@v3
+
+    - name: Python Kur
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Java Kur (Android icin gerekli)
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Android SDK Kur
+      uses: android-actions/setup-android@v3
+
+    - name: Flutter ve Flet Kur
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.19.0' # Stabil sürüm
+
+    - name: Kutuphaneleri Yukle
+      run: |
+        pip install -r requirements.txt
+        pip install flet
+
+    - name: APK Olustur (Build)
+      run: |
+        flet build apk --verbose
+
+    - name: APK'yi Yukle (Artifacts)
+      uses: actions/upload-artifact@v4
+      with:
+        name: muzik-app-apk
+        path: build/apk/app-release.apk
