@@ -30,11 +30,12 @@ jobs:
     - name: Flutter ve Flet Kur
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0' # <-- İŞTE ÇÖZÜM BU! Sürümü yükselttik.
+        flutter-version: '3.24.0' # <-- İŞTE BU SAYIYI DEĞİŞTİRDİM!
 
     - name: Kutuphaneleri Yukle
       run: |
         pip install -r requirements.txt
+        # pip install flet satırını sildik, requirements.txt yeterli.
 
     - name: APK Olustur (Build)
       run: |
