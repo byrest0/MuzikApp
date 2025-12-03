@@ -1,5 +1,5 @@
 import flet as ft
-import flet_audio as fta  # <--- YENİ SES KÜTÜPHANESİ
+import flet_audio as fta
 from youtube_search import YoutubeSearch
 import yt_dlp
 import json
@@ -20,8 +20,7 @@ class MusicApp:
         self.setup_page()
         self.init_variables()
         
-        # --- 2. SES MOTORU (YENİ KÜTÜPHANE İLE) ---
-        # Artık ft.Audio yerine fta.Audio kullanıyoruz
+        # 2. SES MOTORU
         self.audio_player = fta.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
@@ -30,7 +29,6 @@ class MusicApp:
             on_state_changed=self.audio_state_changed,
         )
         
-        # Sesi sayfaya ekle
         self.page.overlay.append(self.audio_player)
         self.page.update() 
         time.sleep(0.1) 
@@ -56,7 +54,7 @@ class MusicApp:
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
-        # Görselleştiriciyi başlat
+        # Görselleştirici
         threading.Thread(target=self.visualizer_loop, daemon=True).start()
 
     def load_settings(self):
@@ -166,6 +164,7 @@ class MusicApp:
         self.ses_ikonu = ft.IconButton(icon="volume_up", icon_size=20, icon_color="white54", on_click=self.sesi_kapat_ac)
 
         # --- VIEW TANIMLAMALARI ---
+        
         self.view_kesfet = ft.Container(
             padding=0, expand=True,
             content=ft.Column([
@@ -173,19 +172,41 @@ class MusicApp:
                     padding=ft.padding.symmetric(horizontal=15, vertical=10),
                     content=ft.Row(
                         controls=[
-                            ft.Row([
+                            # SOL TARAF: Başlık ve İmza (Alt Alta, Sola Yaslı)
+                            ft.Column([
                                 ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
-                                ft.Text(" BEDIRHANY", size=16, color="white", weight="bold", font_family="PorscheTarzi") 
-                            ], spacing=5, vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                            ft.PopupMenuButton(icon="color_lens", items=[
-                                ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
-                                ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
-                                ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
-                                ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
-                                ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
-                                ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
-                            ])
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+                                # PANAMERA TARZI İMZA, KÜÇÜLTÜLMÜŞ
+                                ft.Text("Bedirhan Yazar", size=16, color="white70", font_family="PanameraTarzi") 
+                            ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.START),
+                            
+                            # SAĞ TARAF: Instagram ve Tema (Bitişik İkiz Gibi)
+                            ft.Row([
+                                # INSTAGRAM ALANI (İkon + Küçük Yazı)
+                                ft.Column([
+                                    ft.IconButton(
+                                        icon=ft.icons.PHOTO_CAMERA_OUTLINED,
+                                        icon_color="pink",
+                                        tooltip="Instagram'a Git",
+                                        on_click=lambda _: self.page.launch_url("https://www.instagram.com/bedirhanyazar4?igsh=MWN2NzdyaW5qdXlrcA=="),
+                                        icon_size=24
+                                    ),
+                                    ft.Text("Buraya tıkla", size=8, color="white70")
+                                ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                                
+                                # TEMA BUTONU (Bitişik)
+                                ft.PopupMenuButton(
+                                    icon="color_lens",
+                                    items=[
+                                        ft.PopupMenuItem(text="Yeşil", on_click=lambda _: self.tema_degistir("green")),
+                                        ft.PopupMenuItem(text="Mavi", on_click=lambda _: self.tema_degistir("blue")),
+                                        ft.PopupMenuItem(text="Kırmızı", on_click=lambda _: self.tema_degistir("red")),
+                                        ft.PopupMenuItem(text="Mor", on_click=lambda _: self.tema_degistir("purple")),
+                                        ft.PopupMenuItem(text="Turuncu", on_click=lambda _: self.tema_degistir("orange")),
+                                        ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
+                                    ]
+                                )
+                            ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.CENTER) # Spacing=0 ile bitişik
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
                 ),
                 ft.Container(padding=ft.padding.only(left=15), content=ft.Text("Keşfet", size=28, weight="bold", color="white")),
                 ft.Container(
@@ -194,7 +215,22 @@ class MusicApp:
                         ft.ElevatedButton("Yerli", on_click=lambda _: self.kesfet_kategori_getir("Yerli"), bgcolor="green", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Yabancı", on_click=lambda _: self.kesfet_kategori_getir("Yabancı"), bgcolor="blue", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Mix", on_click=lambda _: self.kesfet_kategori_getir("Rastgele"), bgcolor="purple", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
-                        ft.IconButton(icon="hourglass_bottom", on_click=self.zaman_yolculugu, icon_color="orange"),
+                        
+                        # YENİLENMİŞ ZAMAN YOLCULUĞU BUTONU (YATAY ARKA PLANLI)
+                        ft.Container(
+                            content=ft.IconButton(
+                                icon=ft.icons.RESTORE_ROUNDED,
+                                tooltip="Zaman Yolculuğu",
+                                on_click=self.zaman_yolculugu,
+                                icon_color="white"
+                            ),
+                            gradient=ft.LinearGradient(colors=["orange", "deepOrange"], begin=ft.alignment.center_left, end=ft.alignment.center_right), # Yatay Degrade
+                            border_radius=10,
+                            padding=0,
+                            alignment=ft.alignment.center,
+                            width=60, # Genişlik eklendi ki yatay olsun
+                            height=36  # Yükseklik diğer butonlara yakın
+                        ),
                     ], scroll="auto"), height=60
                 ),
                 self.kesfet_sonuclari
@@ -395,9 +431,8 @@ class MusicApp:
     def audio_state_changed(self, e):
         if e.data == "completed":
             if self.repeat_mode:
-                if self.audio_player:
-                    self.audio_player.seek(0)
-                    self.audio_player.resume()
+                self.audio_player.seek(0)
+                self.audio_player.resume()
             else: self.sonraki_sarki(None)
 
     def slider_change_start(self, e): self.is_slider_changing = True
@@ -801,9 +836,9 @@ class MusicApp:
         self.page.update()
 
 def main(page: ft.Page):
-    # PORSCHE TARZI FONT YÜKLEME
+    # PANAMERA TARZI EL YAZISI FONTU YÜKLEME (Mr De Haviland)
     page.fonts = {
-        "PorscheTarzi": "https://github.com/google/fonts/raw/main/ofl/brunoacesc/BrunoAceSC-Regular.ttf"
+        "PanameraTarzi": "https://github.com/google/fonts/raw/main/ofl/mrdehaviland/MrDeHaviland-Regular.ttf"
     }
     app = MusicApp(page)
 
