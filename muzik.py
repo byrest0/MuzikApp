@@ -1,4 +1,5 @@
 import flet as ft
+import flet_audio as fta  # <--- YENİ SES KÜTÜPHANESİ
 from youtube_search import YoutubeSearch
 import yt_dlp
 import json
@@ -14,13 +15,14 @@ class MusicApp:
         self.app_running = True 
         self.mobile_mode = True 
         
-        # 1. AYARLAR
+        # 1. AYARLARI YÜKLE
         self.load_settings() 
         self.setup_page()
         self.init_variables()
         
-        # 2. SES MOTORUNU OLUŞTUR (0.25.2 için Overlay Yöntemi)
-        self.audio_player = ft.Audio(
+        # --- 2. SES MOTORU (YENİ KÜTÜPHANE İLE) ---
+        # Artık ft.Audio yerine fta.Audio kullanıyoruz
+        self.audio_player = fta.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
             volume=self.settings.get("volume", 1.0),
@@ -28,23 +30,33 @@ class MusicApp:
             on_state_changed=self.audio_state_changed,
         )
         
-        # Sesi Overlay'e ekle ve güncelle
+        # Sesi sayfaya ekle
         self.page.overlay.append(self.audio_player)
-        self.page.update()
-        
-        # 3. ARAYÜZÜ KUR
+        self.page.update() 
+        time.sleep(0.1) 
+
+        # 3. ARAYÜZÜ OLUŞTUR
         self.build_ui()
-        self.page.add(self.view_kesfet)
-        self.page.add(self.nav_bar)
+        
+        # 4. ARAYÜZÜ SAYFAYA EKLE
+        self.page.add(self.view_kesfet) 
+        self.page.add(self.nav_bar)     
         self.page.overlay.append(self.context_menu)
         
+        # 5. KONTROLLERİ AYARLA
+        try:
+            self.ses_slider.value = self.audio_player.volume * 100
+            self.page.update()
+        except: pass
+        
+        # 6. SON GÜNCELLEME
         self.page.update()
-
-        # 4. Başlangıç Verileri
+        
+        # 7. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
-        # Görselleştirici
+        # Görselleştiriciyi başlat
         threading.Thread(target=self.visualizer_loop, daemon=True).start()
 
     def load_settings(self):
@@ -121,7 +133,7 @@ class MusicApp:
         self.favori_sonuclari = ft.ListView(expand=True, spacing=10, padding=10)
         
         self.visualizer_bars = []
-        for _ in range(20): 
+        for _ in range(25): 
             self.visualizer_bars.append(ft.Container(width=6, height=10, bgcolor=self.current_theme_color, border_radius=3, animate=ft.Animation(300, "easeOut")))
         self.visualizer_row = ft.Row(self.visualizer_bars, alignment=ft.MainAxisAlignment.CENTER, spacing=4, height=60, opacity=0)
 
@@ -383,13 +395,14 @@ class MusicApp:
     def audio_state_changed(self, e):
         if e.data == "completed":
             if self.repeat_mode:
-                self.audio_player.seek(0)
-                self.audio_player.resume()
+                if self.audio_player:
+                    self.audio_player.seek(0)
+                    self.audio_player.resume()
             else: self.sonraki_sarki(None)
 
     def slider_change_start(self, e): self.is_slider_changing = True
     def slider_change_end(self, e):
-        if self.audio_player.src:
+        if self.audio_player:
             self.audio_player.seek(int(e.control.value))
         self.is_slider_changing = False
 
@@ -442,6 +455,7 @@ class MusicApp:
                 if not src: raise Exception("Kaynak yok")
 
                 def update_ui_safe():
+                    if not self.audio_player: return
                     self.audio_player.src = src
                     self.audio_player.autoplay = True
                     self.audio_player.update()
@@ -512,7 +526,7 @@ class MusicApp:
         threading.Thread(target=background_load, daemon=True).start()
 
     def toggle_play_pause(self, e):
-        if self.audio_player.src:
+        if self.audio_player and self.audio_player.src:
             if self.caliniyor_mu:
                 self.audio_player.pause()
                 self.play_btn.icon = "play_circle_filled"
