@@ -1,5 +1,5 @@
 import flet as ft
-import flet_audio as fta
+# flet_audio kütüphanesini kaldırdık, 0.25.2 sürümünde ses dahili gelir.
 from youtube_search import YoutubeSearch
 import yt_dlp
 import json
@@ -20,8 +20,8 @@ class MusicApp:
         self.setup_page()
         self.init_variables()
         
-        # 2. SES MOTORU
-        self.audio_player = fta.Audio(
+        # 2. SES MOTORUNU OLUŞTUR (0.25.2 İÇİN SAĞLAM YÖNTEM)
+        self.audio_player = ft.Audio(
             src="https://luan.xyz/files/audio/ambient_c_motion.mp3", 
             autoplay=False, 
             volume=self.settings.get("volume", 1.0),
@@ -29,28 +29,25 @@ class MusicApp:
             on_state_changed=self.audio_state_changed,
         )
         
+        # Sesi Overlay'e ekle ve güncelle
         self.page.overlay.append(self.audio_player)
-        self.page.update() 
-        time.sleep(0.1) 
-
-        # 3. ARAYÜZÜ OLUŞTUR
-        self.build_ui()
+        self.page.update()
         
-        # 4. ARAYÜZÜ SAYFAYA EKLE
-        self.page.add(self.view_kesfet) 
-        self.page.add(self.nav_bar)     
+        # 3. ARAYÜZÜ KUR
+        self.build_ui()
+        self.page.add(self.view_kesfet)
+        self.page.add(self.nav_bar)
         self.page.overlay.append(self.context_menu)
         
-        # 5. KONTROLLERİ AYARLA
+        self.page.update()
+
+        # 4. KONTROLLERİ AYARLA
         try:
             self.ses_slider.value = self.audio_player.volume * 100
             self.page.update()
         except: pass
-        
-        # 6. SON GÜNCELLEME
-        self.page.update()
-        
-        # 7. Başlangıç Verileri
+
+        # 5. Başlangıç Verileri
         self.kesfet_kategori_getir("Rastgele")
         self.favorileri_listele()
         
@@ -172,28 +169,25 @@ class MusicApp:
                     padding=ft.padding.symmetric(horizontal=15, vertical=10),
                     content=ft.Row(
                         controls=[
-                            # SOL TARAF: Başlık ve İmza (Alt Alta, Sola Yaslı)
+                            # SOL TARAF: Başlık ve Altında İmza (Sütun içinde)
                             ft.Column([
                                 ft.Text("MyMusics", size=24, weight="bold", color=self.current_theme_color),
-                                # PANAMERA TARZI İMZA, KÜÇÜLTÜLMÜŞ
-                                ft.Text("Bedirhan Yazar", size=16, color="white70", font_family="PanameraTarzi") 
-                            ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.START),
+                                ft.Text("Bedirhan Yazar", size=15, color="white70", font_family="PanameraTarzi") 
+                            ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.START),
                             
-                            # SAĞ TARAF: Instagram ve Tema (Bitişik İkiz Gibi)
+                            # SAĞ TARAF: Instagram ve Tema (Bitişik)
                             ft.Row([
-                                # INSTAGRAM ALANI (İkon + Küçük Yazı)
                                 ft.Column([
                                     ft.IconButton(
                                         icon=ft.icons.PHOTO_CAMERA_OUTLINED,
                                         icon_color="pink",
-                                        tooltip="Instagram'a Git",
+                                        tooltip="Instagram",
                                         on_click=lambda _: self.page.launch_url("https://www.instagram.com/bedirhanyazar4?igsh=MWN2NzdyaW5qdXlrcA=="),
                                         icon_size=24
                                     ),
                                     ft.Text("Buraya tıkla", size=8, color="white70")
                                 ], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
                                 
-                                # TEMA BUTONU (Bitişik)
                                 ft.PopupMenuButton(
                                     icon="color_lens",
                                     items=[
@@ -205,7 +199,7 @@ class MusicApp:
                                         ft.PopupMenuItem(text="Pembe", on_click=lambda _: self.tema_degistir("pink")),
                                     ]
                                 )
-                            ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.CENTER) # Spacing=0 ile bitişik
+                            ], spacing=0, vertical_alignment=ft.CrossAxisAlignment.CENTER)
                         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER)
                 ),
                 ft.Container(padding=ft.padding.only(left=15), content=ft.Text("Keşfet", size=28, weight="bold", color="white")),
@@ -216,7 +210,7 @@ class MusicApp:
                         ft.ElevatedButton("Yabancı", on_click=lambda _: self.kesfet_kategori_getir("Yabancı"), bgcolor="blue", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         ft.ElevatedButton("Mix", on_click=lambda _: self.kesfet_kategori_getir("Rastgele"), bgcolor="purple", color="white", style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10))),
                         
-                        # YENİLENMİŞ ZAMAN YOLCULUĞU BUTONU (YATAY ARKA PLANLI)
+                        # YATAY ZAMAN YOLCULUĞU BUTONU
                         ft.Container(
                             content=ft.IconButton(
                                 icon=ft.icons.RESTORE_ROUNDED,
@@ -224,12 +218,12 @@ class MusicApp:
                                 on_click=self.zaman_yolculugu,
                                 icon_color="white"
                             ),
-                            gradient=ft.LinearGradient(colors=["orange", "deepOrange"], begin=ft.alignment.center_left, end=ft.alignment.center_right), # Yatay Degrade
+                            gradient=ft.LinearGradient(colors=["orange", "deepOrange"], begin=ft.alignment.center_left, end=ft.alignment.center_right),
                             border_radius=10,
                             padding=0,
                             alignment=ft.alignment.center,
-                            width=60, # Genişlik eklendi ki yatay olsun
-                            height=36  # Yükseklik diğer butonlara yakın
+                            width=60,
+                            height=36
                         ),
                     ], scroll="auto"), height=60
                 ),
@@ -431,8 +425,9 @@ class MusicApp:
     def audio_state_changed(self, e):
         if e.data == "completed":
             if self.repeat_mode:
-                self.audio_player.seek(0)
-                self.audio_player.resume()
+                if self.audio_player:
+                    self.audio_player.seek(0)
+                    self.audio_player.resume()
             else: self.sonraki_sarki(None)
 
     def slider_change_start(self, e): self.is_slider_changing = True
@@ -657,6 +652,12 @@ class MusicApp:
 
     def liste_karti_olustur(self, veri, liste_referansi, indirildi_mi=False):
         thumb = self.get_thumb_url(veri)
+        # --- YENİ EKLENTİ: Border ve Renk ---
+        is_playing = False
+        if self.suanki_index != -1 and self.oynatma_listesi:
+            if self.oynatma_listesi[self.suanki_index]['id'] == veri['id']:
+                is_playing = True
+                
         content_container = ft.Container(
             content=ft.Row([
                 ft.Image(src=thumb, width=60, height=60, border_radius=10, fit=ft.ImageFit.COVER),
@@ -668,7 +669,8 @@ class MusicApp:
                 ft.IconButton(icon="more_vert", icon_size=20, icon_color="grey", on_click=lambda e: self.menuyu_ac(e, veri))
             ]),
             padding=10,
-            bgcolor="#15ffffff", 
+            bgcolor=ft.Colors.with_opacity(0.15, self.current_theme_color) if is_playing else "#15ffffff", 
+            border=ft.border.all(1, self.current_theme_color) if is_playing else None,
             border_radius=15,
         )
         return ft.GestureDetector(
@@ -836,9 +838,9 @@ class MusicApp:
         self.page.update()
 
 def main(page: ft.Page):
-    # PANAMERA TARZI EL YAZISI FONTU YÜKLEME (Mr De Haviland)
+    # PANAMERA TARZI EL YAZISI FONTU YÜKLEME (Pinyon Script)
     page.fonts = {
-        "PanameraTarzi": "https://github.com/google/fonts/raw/main/ofl/mrdehaviland/MrDeHaviland-Regular.ttf"
+        "PanameraTarzi": "https://github.com/google/fonts/raw/main/ofl/pinyonscript/PinyonScript-Regular.ttf"
     }
     app = MusicApp(page)
 
